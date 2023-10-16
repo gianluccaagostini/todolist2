@@ -22,35 +22,41 @@ public class FilterTaskAuth extends OncePerRequestFilter {
   @Override
   protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
       throws ServletException, IOException {
-        //Pegar a autenticação (Usuáriuo e senha)
-        var authorization = request.getHeader("Authorization");
-        var authEncoded = authorization.substring("Basic".length()).trim();
 
-        byte[] authDecode = Base64.getDecoder().decode(authEncoded);
-        
-        var authString = new String(authDecode);
+    var servletPath = request.getServletPath();
+    if (servletPath.startsWith("/tasks/")) {
+      // Pegar a autenticação (Usuáriuo e senha)
+      var authorization = request.getHeader("Authorization");
+      var authEncoded = authorization.substring("Basic".length()).trim();
 
-        String[] credentials = authString.split(":");
-        String username = credentials[0];
-        String password = credentials[1];
+      byte[] authDecode = Base64.getDecoder().decode(authEncoded);
 
-        //Validar usuário
-        var user = this.userRepository.findByUsername(username);
-        if(user == null) {
-          response.sendError(401, "Usuário sem autorização");
-        } else {
-        //Validar senha
+      var authString = new String(authDecode);
+
+      String[] credentials = authString.split(":");
+      String username = credentials[0];
+      String password = credentials[1];
+
+      // Validar usuário
+      var user = this.userRepository.findByUsername(username);
+      if (user == null) {
+        response.sendError(401, "Usuário sem autorização");
+      } else {
+        // Validar senha
         var passwordVerify = BCrypt.verifyer().verify(password.toCharArray(), user.getPassword());
-        if(passwordVerify.verified) {
+        if (passwordVerify.verified) {
+          request.setAttribute("idUser", user.getId());
           filterChain.doFilter(request, response);
-        }else {
+        } else {
           response.sendError(401, "Usuário sem autorização");
         }
-        //Segue viagem  
-        
-        }     
+        // Segue viagem
+
+      }
+    }else {
+      filterChain.doFilter(request, response);
+    }
+
   }
 
-
-  
 }
